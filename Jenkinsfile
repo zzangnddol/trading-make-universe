@@ -25,6 +25,7 @@ pipeline {
                     --name ${DOCKER_CONTAINER_NAME} \
                     -e TZ=Asia/Seoul \
                     -v /etc/localtime:/etc/localtime:ro \
+                    --restart=always \
                     ${DOCKER_IMAGE_NAME}"
             }
         }
