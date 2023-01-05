@@ -2,7 +2,7 @@ from peewee import Model
 from playhouse.mysql_ext import MariaDBConnectorDatabase
 
 ip = 'myplan.ddns.net'
-port = 3307
+port = 3306
 database = 'system_trading'
 user = 'ybsong'
 password = 'Thddudqo072!'
