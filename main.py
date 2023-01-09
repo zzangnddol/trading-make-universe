@@ -27,7 +27,7 @@ def make_universe(strategy_id=1):
 
 
 @db.atomic()
-def __make_universe(strategy_id=1, is_test=False):
+def __make_universe(strategy_id=1, without_insert=False):
     print(f'[{datetime.now()}] 유니버스 생성 작업 시작')
     UniverseTest.delete().where(UniverseTest.stragegy_id == strategy_id).execute()
 
@@ -57,32 +57,26 @@ def __make_universe(strategy_id=1, is_test=False):
         # PRICE >= 액면가, >= 1000
 
         print(f'날짜: {last_stock_price.date_string}, 종목코드: {stock.code}, 액면가: {stock.par_price} 종목명: {stock.name}')
-        if not is_test:
-            universe = UniverseTest()
-            universe.stragegy_id = strategy_id
-            universe.stock_code = stock.code
-            universe.stock_name = stock.name
-            universe.date_string = last_stock_price.date_string
-            universe.save()
+        if not without_insert:
+            UniverseTest.create(stragegy_id=strategy_id, stock_code=stock.code, stock_name=stock.name, date_string=last_stock_price.date_string)
 
         count += 1
     print(f'[{datetime.now()}] 유니버스 생성 작업 종료 - saved count: {count}')
 
 
 if __name__ == '__main__':
-    is_test = False
-
     print(f'[{datetime.now()}] 유니버스 생성 프로세스 시작')
+
     # 한줄만 가져오기
     # last_price: StockPrice = UniverseTest.select().limit(1).order_by(UniverseTest.date_string.desc())[0]
     # print(last_price.date_string)
 
-    # test
+    is_test = False
     if is_test:
-        __make_universe()
-
-    # 매일 밤 10시에 작업 수행
-    if not is_test:
+        # test
+        __make_universe(without_insert=False)
+    else:
+        # 매일 밤 10시에 작업 수행
         schedule.every().day.at("22:00").do(make_universe)
         print(f'[{datetime.now()}] 스케쥴러 시작')
         while True:

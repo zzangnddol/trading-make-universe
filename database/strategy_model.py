@@ -1,4 +1,4 @@
-from peewee import CharField, IntegerField
+from peewee import CharField, IntegerField, CompositeKey
 
 from database.db import BaseModel
 
@@ -11,4 +11,4 @@ class UniverseTest(BaseModel):
 
     class Meta:
         db_table = "universe_test"
-        primary_key = False
+        primary_key = CompositeKey('stragegy_id', 'stock_code')
