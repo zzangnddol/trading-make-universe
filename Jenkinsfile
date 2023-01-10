@@ -15,7 +15,10 @@ pipeline {
         stage("Docker build") {
             steps {
                 echo "Nexus Login User: ${NEXUS_LOGIN_USR}"
-                sh "docker build -t ${DOCKER_IMAGE_NAME} ."
+                sh "docker build -t ${DOCKER_IMAGE_NAME} \
+                    --build-arg NEXUS_LOGIN_USR=\"${NEXUS_LOGIN_USR}\" \
+                    --build-arg NEXUS_LOGIN_PSW=\"${NEXUS_LOGIN_PSW}\" \
+                    ."
             }
         }
         stage("Docker container start") {
