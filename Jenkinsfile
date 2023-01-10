@@ -8,9 +8,13 @@ pipeline {
     triggers {
         pollSCM('* * * * *')
     }
+    environment {
+        NEXUS_LOGIN = credentials('nexus-login')
+    }
     stages {
         stage("Docker build") {
             steps {
+                echo "Nexus Login User: ${NEXUS_LOGIN_USR}"
                 sh "docker build -t ${DOCKER_IMAGE_NAME} ."
             }
         }
