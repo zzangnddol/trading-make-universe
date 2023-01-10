@@ -7,7 +7,8 @@ ENV NEXUS_LOGIN_USR=${NEXUS_LOGIN_USR}
 ENV NEXUS_LOGIN_PSW=${NEXUS_LOGIN_PSW}
 
 WORKDIR /root/.pip
-COPY pip.ini pip.conf
+#COPY pip.ini pip.conf
+RUN printf "[global]\nindex-url=http://${NEXUS_LOGIN_USR}:${NEXUS_LOGIN_PSW}@myplan.ddns.net:8081/repository/pypi-repos/simple\ntrusted-host=myplan.ddns.net" > pip.conf
 
 WORKDIR /app
 COPY . .
