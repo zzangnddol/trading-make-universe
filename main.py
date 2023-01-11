@@ -2,10 +2,13 @@ import time
 from datetime import datetime
 
 import schedule
+from util.notify import Notifier
 
 from database.db import db
 from database.stock_model import StockInfo, StockPrice
 from database.strategy_model import UniverseTest
+
+notifier = Notifier("trading-make-universe")
 
 
 @db.atomic()
@@ -22,8 +25,10 @@ def make_universe(strategy_id=1):
             return
 
         __make_universe(strategy_id)
+        notifier.send("유니버스 생성 완료")
     except (Exception,) as e:
         print(e)
+        notifier.send("유니버스 생성 오류")
 
 
 @db.atomic()
