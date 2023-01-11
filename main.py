@@ -23,15 +23,15 @@ def make_universe(strategy_id=1):
         if today != last_price.date_string:
             return
 
-        __make_universe(strategy_id)
-        notifier.send("유니버스 생성 완료")
+        count = __make_universe(strategy_id)
+        notifier.send(f"유니버스 생성 완료 - {count}개 종목")
     except (Exception,) as e:
         print(e)
         notifier.send("유니버스 생성 오류")
 
 
 @db.atomic()
-def __make_universe(strategy_id=1, without_insert=False):
+def __make_universe(strategy_id=1, without_insert=False) -> int:
     print(f'[{datetime.now()}] 유니버스 생성 작업 시작')
     UniverseTest.delete().where(UniverseTest.stragegy_id == strategy_id).execute()
 
@@ -66,6 +66,7 @@ def __make_universe(strategy_id=1, without_insert=False):
 
         count += 1
     print(f'[{datetime.now()}] 유니버스 생성 작업 종료 - saved count: {count}')
+    return count
 
 
 if __name__ == '__main__':
