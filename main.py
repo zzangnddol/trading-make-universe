@@ -2,11 +2,10 @@ import time
 from datetime import datetime
 
 import schedule
-from util.notify import Notifier
-
 from database.db import db
-from database.stock_model import StockInfo, StockPrice
-from database.strategy_model import UniverseTest
+from database.model.stock_models import StockInfo, StockPrice
+from database.model.strategy_models import UniverseTest
+from util.notify import Notifier
 
 notifier = Notifier("trading-make-universe")
 
