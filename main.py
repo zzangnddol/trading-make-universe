@@ -60,9 +60,16 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
         # V_MA(20) >= 10만
         # PRICE >= 액면가, >= 1000
 
-        print(f'날짜: {last_stock_price.date_string}, 종목코드: {stock.code}, 액면가: {stock.par_price} 종목명: {stock.name}')
+        print(f'{count + 1:>3d} - '
+              f'날짜: {last_stock_price.date_string}     '
+              f'종목코드: {stock.code}     '
+              f'액면가: {stock.par_price:5,d}     '
+              f'종목명: {stock.name}     ')
         if not without_insert:
-            UniverseTest.create(stragegy_id=strategy_id, stock_code=stock.code, stock_name=stock.name, date_string=last_stock_price.date_string)
+            UniverseTest.create(stragegy_id=strategy_id,
+                                stock_code=stock.code,
+                                stock_name=stock.name,
+                                date_string=last_stock_price.date_string)
 
         count += 1
     print(f'[{datetime.now()}] 유니버스 생성 작업 종료 - saved count: {count}')
