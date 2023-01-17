@@ -9,7 +9,7 @@ from database.model.stock_models import StockInfo, StockPrice
 from database.model.strategy_models import UniverseTest
 from util.notify import Notifier
 
-logging.basicConfig()
+logging.basicConfig(format="[%(asctime)s] [%(levelname)-4.4s] [%(threadName)-10.10s] [%(filename)-17.17s:%(lineno)-4.4s] : %(message)s")
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
