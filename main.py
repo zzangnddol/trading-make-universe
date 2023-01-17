@@ -98,7 +98,7 @@ if __name__ == '__main__':
         __make_universe(without_insert=False)
     else:
         # process 상태 기록
-        schedule.every().minutes.do(__process_ping())
+        schedule.every().minutes.do(__process_ping)
         # 매일 밤 10시에 작업 수행
         schedule.every().day.at("22:00").do(make_universe)
         print(f'[{datetime.now()}] 스케쥴러 시작')
