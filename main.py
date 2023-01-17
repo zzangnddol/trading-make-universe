@@ -4,7 +4,7 @@ from datetime import datetime
 
 import schedule
 from database.db import db
-from database.model.process_models import write_process_status
+from database.model.process_models import write_process_status, ProcessStatus
 from database.model.stock_models import StockInfo, StockPrice
 from database.model.strategy_models import UniverseTest
 from util.notify import Notifier
@@ -99,6 +99,8 @@ if __name__ == '__main__':
         # test
         __make_universe(without_insert=False)
     else:
+        # 먼저 UNIVERSE 프로세스를 삭제한다.
+        ProcessStatus.delete().where(ProcessStatus.process_type == "UNIVERSE").execute()
         # process 상태 기록
         schedule.every().minutes.do(__process_ping)
         # 매일 밤 10시에 작업 수행
