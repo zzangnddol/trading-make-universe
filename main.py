@@ -10,6 +10,7 @@ from database.model.strategy_models import UniverseTest
 from util.notify import Notifier
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 notifier = Notifier("trading-make-universe")
 
@@ -101,7 +102,7 @@ if __name__ == '__main__':
         schedule.every().minutes.do(__process_ping)
         # 매일 밤 10시에 작업 수행
         schedule.every().day.at("22:00").do(make_universe)
-        print(f'[{datetime.now()}] 스케쥴러 시작')
+        print("스케쥴러 시작")
         while True:
             schedule.run_pending()
             time.sleep(1)
