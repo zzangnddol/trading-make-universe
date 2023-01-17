@@ -9,6 +9,7 @@ from database.model.stock_models import StockInfo, StockPrice
 from database.model.strategy_models import UniverseTest
 from util.notify import Notifier
 
+logging.basicConfig()
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
@@ -19,11 +20,11 @@ notifier = Notifier("trading-make-universe")
 def make_universe(strategy_id=1):
     try:
         now = datetime.now()
-        print(f'[{now}] 유니버스 생성 필요 체크')
+        logger.info("유니버스 생성 필요 체크")
         today = now.strftime("%Y%m%d")
 
         last_price: StockPrice = StockPrice.select().limit(1).order_by(StockPrice.date_string.desc())[0]
-        print(f'Today: {today}, last date in DB: {last_price.date_string}')
+        logger.info(f"Today: {today}, last date in DB: {last_price.date_string}")
         # 최종 데이터가 오늘 날짜가 아니면 휴일로 가정하고 종료
         if today != last_price.date_string:
             return
@@ -31,13 +32,13 @@ def make_universe(strategy_id=1):
         count = __make_universe(strategy_id)
         notifier.send(f"유니버스 생성 완료 - {count}개 종목")
     except (Exception,) as e:
-        print(e)
+        logger.warning(e)
         notifier.send("유니버스 생성 오류")
 
 
 @db.atomic()
 def __make_universe(strategy_id=1, without_insert=False) -> int:
-    print(f'[{datetime.now()}] 유니버스 생성 작업 시작')
+    print("유니버스 생성 작업 시작")
     UniverseTest.delete().where(UniverseTest.stragegy_id == strategy_id).execute()
 
     count = 0
@@ -65,11 +66,11 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
         # V_MA(20) >= 10만
         # PRICE >= 액면가, >= 1000
 
-        print(f'{count + 1:>3d} - '
-              f'날짜: {last_stock_price.date_string}     '
-              f'종목코드: {stock.code}     '
-              f'액면가: {stock.par_price:5,d}     '
-              f'종목명: {stock.name}     ')
+        logger.info(f'{count + 1:>3d} - '
+                    f'날짜: {last_stock_price.date_string}     '
+                    f'종목코드: {stock.code}     '
+                    f'액면가: {stock.par_price:5,d}     '
+                    f'종목명: {stock.name}     ')
         if not without_insert:
             UniverseTest.create(stragegy_id=strategy_id,
                                 stock_code=stock.code,
@@ -102,7 +103,7 @@ if __name__ == '__main__':
         schedule.every().minutes.do(__process_ping)
         # 매일 밤 10시에 작업 수행
         schedule.every().day.at("22:00").do(make_universe)
-        print("스케쥴러 시작")
+        logger.info("스케쥴러 시작")
         while True:
             schedule.run_pending()
             time.sleep(1)
