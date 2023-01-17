@@ -1,11 +1,15 @@
+import logging
 import time
 from datetime import datetime
 
 import schedule
 from database.db import db
+from database.model.process_models import write_process_status
 from database.model.stock_models import StockInfo, StockPrice
 from database.model.strategy_models import UniverseTest
 from util.notify import Notifier
+
+logger = logging.getLogger(__name__)
 
 notifier = Notifier("trading-make-universe")
 
@@ -76,8 +80,13 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
     return count
 
 
+def __process_ping():
+    write_process_status("UNIVERSE", True)
+    logger.info("프로세스 상태 기록")
+
+
 if __name__ == '__main__':
-    print(f'[{datetime.now()}] 유니버스 생성 프로세스 시작')
+    logger.info("유니버스 생성 프로세스 시작")
 
     # 한줄만 가져오기
     # last_price: StockPrice = UniverseTest.select().limit(1).order_by(UniverseTest.date_string.desc())[0]
@@ -88,6 +97,8 @@ if __name__ == '__main__':
         # test
         __make_universe(without_insert=False)
     else:
+        # process 상태 기록
+        schedule.every().minutes.do(__process_ping())
         # 매일 밤 10시에 작업 수행
         schedule.every().day.at("22:00").do(make_universe)
         print(f'[{datetime.now()}] 스케쥴러 시작')
