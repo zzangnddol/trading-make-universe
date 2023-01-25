@@ -1,6 +1,7 @@
 import logging
 import time
 from datetime import datetime
+from typing import Union
 
 import schedule
 from database.db import db
@@ -23,7 +24,11 @@ def make_universe(strategy_id=1):
         logger.info("유니버스 생성 필요 체크")
         today = now.strftime("%Y%m%d")
 
-        last_price: StockPrice = StockPrice.select().limit(1).order_by(StockPrice.date_string.desc())[0]
+        # 전체 종목 조회 시 시간이 오래 걸리므로 삼성전자(005930) 종목의 주가를 이용한다.
+        last_price: StockPrice = __get_stock_last_price_data("005930")
+        if last_price is None:
+            logger.warning("[005930] 종목의 주가 정보가 존재하지 않습니다.")
+            return
         logger.info(f"Today: {today}, last date in DB: {last_price.date_string}")
         # 최종 데이터가 오늘 날짜가 아니면 휴일로 가정하고 종료
         if today != last_price.date_string:
@@ -44,10 +49,9 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
     count = 0
     stock: StockInfo
     for stock in StockInfo.select():
-        query = StockPrice.select().where(StockPrice.stock_code == stock.code).order_by(StockPrice.date_string.desc()).limit(1)
-        if query.count() == 0:
+        last_stock_price: StockPrice = __get_stock_last_price_data(stock.code)
+        if last_stock_price is None:
             continue
-        last_stock_price: StockPrice = query[0]
 
         if '스팩' in stock.name:
             continue
@@ -82,6 +86,13 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
     return count
 
 
+def __get_stock_last_price_data(code) -> Union[StockPrice, None]:
+    query = StockPrice.select().where(StockPrice.stock_code == code).order_by(StockPrice.date_string.desc())
+    if query.count() == 0:
+        return None
+    return query[0]
+
+
 def __process_ping():
     write_process_status("UNIVERSE", True)
     logger.info("프로세스 상태 기록")
@@ -91,8 +102,8 @@ if __name__ == '__main__':
     logger.info("유니버스 생성 프로세스 시작")
 
     # 한줄만 가져오기
-    # last_price: StockPrice = UniverseTest.select().limit(1).order_by(UniverseTest.date_string.desc())[0]
-    # print(last_price.date_string)
+    # last_price: StockPrice = __get_stock_last_price_data("005930")
+    # print("NONE" if last_price is None else last_price.date_string)
 
     is_test = False
     if is_test:
