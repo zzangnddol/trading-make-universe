@@ -115,7 +115,7 @@ if __name__ == '__main__':
         # process 상태 기록
         schedule.every().minutes.do(__process_ping)
         # 매일 밤 10시에 작업 수행
-        schedule.every().day.at("22:00").do(make_universe)
+        schedule.every().day.at("21:00").do(make_universe)
         logger.info("스케쥴러 시작")
         while True:
             schedule.run_pending()
