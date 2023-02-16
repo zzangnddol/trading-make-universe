@@ -53,22 +53,29 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
         if last_stock_price is None:
             continue
 
+        # 거래 정지 상태
+        if last_stock_price.open == 0:
+            logger.info(f"------ 거래정지 종목: {last_stock_price.date_string} {stock.code} {stock.name}")
+            continue
+
+        # 종목 이름에 '스팩'이 없어야 함
         if '스팩' in stock.name:
             continue
+
+        # 액면가 - 0 혹은 None이 아닌 경우
         if stock.par_price is None or stock.par_price == 0:
             continue
+
+        # RSI(10) < 30
+        # V_MA(20) >= 10만
         if last_stock_price.rsi10 is None or last_stock_price.vma20 is None:
             continue
         if last_stock_price.rsi10 >= 30 or last_stock_price.vma20 < 100000:
             continue
+
+        # PRICE >= 액면가, >= 1000
         if last_stock_price.close < stock.par_price or last_stock_price.close < 1000:
             continue
-
-        # 종목 이름에 '스팩'이 없어야 함
-        # 액면가 - 0 혹은 None이 아닌 경우
-        # RSI(10) < 30
-        # V_MA(20) >= 10만
-        # PRICE >= 액면가, >= 1000
 
         logger.info(f'{count + 1:>3d} - '
                     f'날짜: {last_stock_price.date_string}     '
@@ -105,7 +112,7 @@ if __name__ == '__main__':
     # last_price: StockPrice = __get_stock_last_price_data("005930")
     # print("NONE" if last_price is None else last_price.date_string)
 
-    is_test = False
+    is_test = True
     if is_test:
         # test
         __make_universe(without_insert=False)
