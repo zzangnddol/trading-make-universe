@@ -5,6 +5,7 @@ from typing import Union
 
 import schedule
 from database.db import db
+from database.model.account_models import AccountBalance
 from database.model.process_models import write_process_status, ProcessStatus
 from database.model.stock_models import StockInfo, StockPrice
 from database.model.strategy_models import UniverseTest
@@ -46,6 +47,9 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
     print("유니버스 생성 작업 시작")
     UniverseTest.delete().where(UniverseTest.stragegy_id == strategy_id).execute()
 
+    balances = __get_account_balances()  # 보유 종목
+    suspended_codes = []  # 거래정지 종목 코드 목록
+
     count = 0
     stock: StockInfo
     for stock in StockInfo.select():
@@ -56,6 +60,8 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
         # 거래 정지 상태
         if last_stock_price.open == 0:
             logger.info(f"------ 거래정지 종목: {last_stock_price.date_string} {stock.code} {stock.name}")
+            if stock.code in balances:
+                suspended_codes.append(stock.code)
             continue
 
         # 종목 이름에 '스팩'이 없어야 함
@@ -90,6 +96,15 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
 
         count += 1
     print(f'[{datetime.now()}] 유니버스 생성 작업 종료 - saved count: {count}')
+
+    # 보유종목 중 거래 정지된 종목에 대해 알림 전송
+    if len(suspended_codes) > 0:
+        message = ''
+        for code in suspended_codes:
+            balance = balances[code]
+            message += f"{balance.stock_code} {balance.stock_name}\n"
+        message += f"-- 총 {len(suspended_codes)}개 종목 --"
+        notifier.send(f"== 보유 중 거래정지 종목 ==\n{message}")
     return count
 
 
@@ -100,22 +115,30 @@ def __get_stock_last_price_data(code) -> Union[StockPrice, None]:
     return query[0]
 
 
+def __get_account_balances():
+    """보유 종목 조회"""
+    balances = {}
+    account: AccountBalance
+    for account in AccountBalance.select():
+        balances[account.stock_code] = account
+    return balances
+
+
 def __process_ping():
     write_process_status("UNIVERSE", True)
     logger.info("프로세스 상태 기록")
 
 
-if __name__ == '__main__':
+def __start_make_universe(is_test=False, without_insert=False):
     logger.info("유니버스 생성 프로세스 시작")
 
     # 한줄만 가져오기
     # last_price: StockPrice = __get_stock_last_price_data("005930")
     # print("NONE" if last_price is None else last_price.date_string)
 
-    is_test = True
     if is_test:
         # test
-        __make_universe(without_insert=False)
+        __make_universe(without_insert=without_insert)
     else:
         # 먼저 UNIVERSE 프로세스를 삭제한다.
         ProcessStatus.delete().where(ProcessStatus.process_type == "UNIVERSE").execute()
@@ -127,3 +150,8 @@ if __name__ == '__main__':
         while True:
             schedule.run_pending()
             time.sleep(1)
+
+
+if __name__ == '__main__':
+    __start_make_universe()  # 실 사용
+    # __start_make_universe(is_test=True, without_insert=True)  # 테스트
