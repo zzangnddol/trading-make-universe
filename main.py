@@ -46,7 +46,8 @@ def make_universe(strategy_id=1):
 def __make_universe(strategy_id=1, without_insert=False) -> int:
     print("유니버스 생성 작업 시작")
     # 이전 유니버스 삭제
-    UniverseTest.delete().where(UniverseTest.stragegy_id == strategy_id).execute()
+    if not without_insert:
+        UniverseTest.delete().where(UniverseTest.stragegy_id == strategy_id).execute()
 
     # 보유 종목 조회
     balances = __get_account_balances()  # 보유 종목
