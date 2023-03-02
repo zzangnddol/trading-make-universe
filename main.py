@@ -7,7 +7,8 @@ import schedule
 from database.db import db
 from database.model.account_models import AccountBalance
 from database.model.process_models import write_process_status, ProcessStatus
-from database.model.stock_models import StockInfo, StockPrice, get_stock_prices_dataframe
+from database.model.stock_models import StockInfo, StockPrice, \
+    get_stock_prices_dataframe
 from database.model.strategy_models import UniverseTest
 from util.notify import Notifier
 
@@ -54,12 +55,16 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
     suspended_codes = []  # 거래정지 종목 코드 목록
 
     # 유니버스 만들기
+    rising_ma60_stocks = []
     count = 0
     stock: StockInfo
     for stock in StockInfo.select():
         stock_prices_10d = get_stock_prices_dataframe(stock.code).iloc[-10:]
         if len(stock_prices_10d) <= 1:
             continue
+
+        # 60일 이동평균선의 일별 차이 컬럼 추가
+        stock_prices_10d['ma60-diff'] = stock_prices_10d['ma60'].diff()
 
         # 10거래일 내 25% 이상 하락한 날이 하루 이상인 종목 제거
         days_down_25 = len(stock_prices_10d.loc[(stock_prices_10d['change'] < -0.25)])  # 25% 이상 하락한 날 수
@@ -94,6 +99,10 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
         if last_stock_price.close < stock.par_price or last_stock_price.close < 1000:
             continue
 
+        # 60일 이동평균이 상승중인 종목
+        if last_stock_price['ma60-diff'] > 0:
+            rising_ma60_stocks.append(stock)
+
         logger.info(f'{count + 1:>3d} - '
                     f'날짜: {last_stock_price.date_string}     '
                     f'종목코드: {stock.code}     '
@@ -106,6 +115,14 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
                                 date_string=last_stock_price.date_string)
 
         count += 1
+
+    if len(rising_ma60_stocks) > 0:
+        message = '=== 60일 이동평균 상승 종목 ==\n'
+        for stock in rising_ma60_stocks:
+            message += f"{stock.code} {stock.name}\n"
+        message += f"-- 총 {len(rising_ma60_stocks)}개 종목 --"
+        notifier.send(f"{message}")
+
     print(f'[{datetime.now()}] 유니버스 생성 작업 종료 - saved count: {count}')
 
     # 보유종목 중 거래 정지된 종목에 대해 알림 전송
@@ -172,3 +189,8 @@ if __name__ == '__main__':
     # prices_10d: DataFrame = prices.iloc[-10:]
     # print(prices_10d)
     # print(prices_10d.loc[(prices_10d['change'] < -0.25)])
+
+    # 삼성전자 - 005930
+    # prices = get_stock_prices_dataframe('005930').iloc[-10:]
+    # prices['diff-ma60'] = prices['ma60'].diff()
+    # print(prices[['ma60', 'diff-ma60']])
