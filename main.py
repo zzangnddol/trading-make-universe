@@ -181,8 +181,8 @@ def __start_make_universe(is_test=False, without_insert=False):
 
 
 if __name__ == '__main__':
-    # __start_make_universe()  # 실 사용
-    __start_make_universe(is_test=True, without_insert=True)  # 테스트
+    __start_make_universe()  # 실 사용
+    # __start_make_universe(is_test=True, without_insert=True)  # 테스트
 
     # prices = get_stock_prices_dataframe('000020')
     # print(len(prices))
