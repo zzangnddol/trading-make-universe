@@ -55,7 +55,6 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
     suspended_codes = []  # 거래정지 종목 코드 목록
 
     # 유니버스 만들기
-    rising_ma60_stocks = []
     count = 0
     stock: StockInfo
     for stock in StockInfo.select():
@@ -63,15 +62,18 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
         if len(stock_prices_10d) <= 1:
             continue
 
-        # 60일 이동평균선의 일별 차이 컬럼 추가
-        stock_prices_10d['ma60-diff'] = stock_prices_10d['ma60'].diff()
+        stock_prices_10d['ma60-diff'] = stock_prices_10d['ma60'].diff()  # 60일 이동평균선의 일별 차이 컬럼 추가
+        stock_prices_10d['ma5-ma60'] = stock_prices_10d['ma5'] - stock_prices_10d['ma60']  # 5일 이동평균과 60일 이동평균의 차이
+        stock_prices_10d['ma20-ma60'] = stock_prices_10d['ma20'] - stock_prices_10d['ma60']  # 5일 이동평균과 60일 이동평균의 차이
 
         # 10거래일 내 25% 이상 하락한 날이 하루 이상인 종목 제거
         days_down_25 = len(stock_prices_10d.loc[(stock_prices_10d['change'] < -0.25)])  # 25% 이상 하락한 날 수
         if days_down_25 > 0:
             logger.info(f"------ 10 거래일 내 하루 25%이상 하락한 종목: {stock.code} {stock.name}, 하락일 수: {days_down_25}")
             continue
+
         last_stock_price: StockPrice = stock_prices_10d.iloc[-1]
+        previous_stock_prices: StockPrice = stock_prices_10d.iloc[-2]
 
         # 거래 정지 상태
         if last_stock_price.open == 0:
@@ -99,9 +101,9 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
         if last_stock_price.close < stock.par_price or last_stock_price.close < 1000:
             continue
 
-        # 60일 이동평균이 상승중인 종목
-        if last_stock_price['ma60-diff'] > 0:
-            rising_ma60_stocks.append(stock)
+        # MA-5가 MA-60을 하향 돌파하는 종목은 제거
+        if last_stock_price['ma5-ma60'] <= 0 < previous_stock_prices['ma5-ma60']:
+            continue
 
         logger.info(f'{count + 1:>3d} - '
                     f'날짜: {last_stock_price.date_string}     '
@@ -116,23 +118,16 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
 
         count += 1
 
-    if len(rising_ma60_stocks) > 0:
-        message = '=== 60일 이동평균 상승 종목 ==\n'
-        for stock in rising_ma60_stocks:
-            message += f"{stock.code} {stock.name}\n"
-        message += f"-- 총 {len(rising_ma60_stocks)}개 종목 --"
-        notifier.send(f"{message}")
-
     print(f'[{datetime.now()}] 유니버스 생성 작업 종료 - saved count: {count}')
 
     # 보유종목 중 거래 정지된 종목에 대해 알림 전송
     if len(suspended_codes) > 0:
-        message = ''
+        message = '== 보유 중 거래정지 종목 ==\n'
         for code in suspended_codes:
             balance = balances[code]
             message += f"{balance.stock_code} {balance.stock_name}\n"
         message += f"-- 총 {len(suspended_codes)}개 종목 --"
-        notifier.send(f"== 보유 중 거래정지 종목 ==\n{message}")
+        notifier.send(message)
     return count
 
 
@@ -194,3 +189,5 @@ if __name__ == '__main__':
     # prices = get_stock_prices_dataframe('005930').iloc[-10:]
     # prices['diff-ma60'] = prices['ma60'].diff()
     # print(prices[['ma60', 'diff-ma60']])
+    # prices['ma5-ma60'] = prices['ma5'] - prices['ma60']
+    # print(prices[['ma5', 'ma60', 'ma5-ma60']])
