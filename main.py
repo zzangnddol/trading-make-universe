@@ -58,6 +58,9 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
     count = 0
     stock: StockInfo
     for stock in StockInfo.select():
+        if stock.exclude_trading is not None and stock.exclude_trading:
+            # 거래 제외 종목
+            continue
         stock_prices_10d = get_stock_prices_dataframe(stock.code).iloc[-10:]
         if len(stock_prices_10d) <= 1:
             continue
