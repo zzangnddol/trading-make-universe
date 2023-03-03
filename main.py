@@ -45,14 +45,14 @@ def make_universe(strategy_id=1):
 
 @db.atomic()
 def __make_universe(strategy_id=1, without_insert=False) -> int:
-    print("유니버스 생성 작업 시작")
+    logger.info("유니버스 생성 작업 시작")
     # 이전 유니버스 삭제
     if not without_insert:
         UniverseTest.delete().where(UniverseTest.stragegy_id == strategy_id).execute()
 
     # 보유 종목 조회
     balances = __get_account_balances()  # 보유 종목
-    suspended_codes = []  # 거래정지 종목 코드 목록
+    suspended_codes = []  # 거래정지 종목
 
     # 유니버스 만들기
     count = 0
@@ -72,7 +72,7 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
         # 10거래일 내 25% 이상 하락한 날이 하루 이상인 종목 제거
         days_down_25 = len(stock_prices_10d.loc[(stock_prices_10d['change'] < -0.25)])  # 25% 이상 하락한 날 수
         if days_down_25 > 0:
-            logger.info(f"------ 10 거래일 내 하루 25%이상 하락한 종목: {stock.code} {stock.name}, 하락일 수: {days_down_25}")
+            logger.info(f"  ------ 10 거래일 내 하루 25%이상 하락한 종목: {stock.code} {stock.name}, 하락일 수: {days_down_25}")
             continue
 
         last_stock_price: StockPrice = stock_prices_10d.iloc[-1]
@@ -80,57 +80,48 @@ def __make_universe(strategy_id=1, without_insert=False) -> int:
 
         # 거래 정지 상태
         if last_stock_price.open == 0:
-            logger.info(f"------ 거래정지 종목: {last_stock_price.date_string} {stock.code} {stock.name}")
+            logger.info(f"  ------ 거래정지 종목: {last_stock_price.date_string} {stock.code} {stock.name}")
             if stock.code in balances:
-                suspended_codes.append(stock.code)
+                suspended_codes.append(stock)
             continue
 
         # 종목 이름에 '스팩'이 없어야 함
         if '스팩' in stock.name:
             continue
-
         # 액면가 - 0 혹은 None이 아닌 경우
         if stock.par_price is None or stock.par_price == 0:
             continue
-
         # RSI(10) < 30
-        # V_MA(20) >= 10만
         if last_stock_price.rsi10 is None or last_stock_price.vma20 is None:
             continue
+        # V_MA(20) >= 10만
         if last_stock_price.rsi10 >= 30 or last_stock_price.vma20 < 100000:
             continue
-
         # PRICE >= 액면가, >= 1000
         if last_stock_price.close < stock.par_price or last_stock_price.close < 1000:
             continue
-
         # MA-5가 MA-60을 하향 돌파하는 종목은 제거
         if last_stock_price['ma5-ma60'] <= 0 < previous_stock_prices['ma5-ma60']:
             continue
 
-        logger.info(f'{count + 1:>3d} - '
-                    f'날짜: {last_stock_price.date_string}     '
-                    f'종목코드: {stock.code}     '
-                    f'액면가: {stock.par_price:5,d}     '
-                    f'종목명: {stock.name}     ')
+        logger.info(f'{count + 1:<3d} - '
+                    f'날짜: {last_stock_price.date_string}   '
+                    f'종목코드: {stock.code}   '
+                    f'액면가: {stock.par_price:5,d}   '
+                    f'종목명: {stock.name}')
+
         if not without_insert:
             UniverseTest.create(stragegy_id=strategy_id,
                                 stock_code=stock.code,
                                 stock_name=stock.name,
                                 date_string=last_stock_price.date_string)
-
         count += 1
 
-    print(f'[{datetime.now()}] 유니버스 생성 작업 종료 - saved count: {count}')
+    logger.info(f"유니버스 생성 작업 종료 - saved count: {count}")
 
     # 보유종목 중 거래 정지된 종목에 대해 알림 전송
-    if len(suspended_codes) > 0:
-        message = '== 보유 중 거래정지 종목 ==\n'
-        for code in suspended_codes:
-            balance = balances[code]
-            message += f"{balance.stock_code} {balance.stock_name}\n"
-        message += f"-- 총 {len(suspended_codes)}개 종목 --"
-        notifier.send(message)
+    __log_stocks("보유 중 거래정지 종목", suspended_codes, notifying=True)
+
     return count
 
 
@@ -176,6 +167,19 @@ def __start_make_universe(is_test=False, without_insert=False):
         while True:
             schedule.run_pending()
             time.sleep(1)
+
+
+def __log_stocks(title: str, stocks: [], notifying=False):
+    if len(stocks) == 0:
+        return
+    message = f"== {title} ==\n"
+    stock: StockInfo
+    for stock in stocks:
+        message += f"{stock.code} {stock.name}\n"
+    message += f"  -- 총 {len(stocks)}개 종목 --"
+    logger.info(f"\n{message}")
+    if notifying:
+        notifier.send(message)
 
 
 if __name__ == '__main__':
