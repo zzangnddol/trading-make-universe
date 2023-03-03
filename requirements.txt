@@ -11,5 +11,5 @@ pytz==2022.7.1
 requests==2.28.1
 schedule==1.1.0
 six==1.16.0
-trading-system-common==0.0.8
+trading-system-common==0.0.9
 urllib3==1.26.13
